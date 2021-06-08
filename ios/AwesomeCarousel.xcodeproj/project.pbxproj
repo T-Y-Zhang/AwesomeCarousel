@@ -114,7 +114,6 @@
 				682B0B0383CA1C5E420EC27A /* Pods-AwesomeCarousel-AwesomeCarouselTests.debug.xcconfig */,
 				1E060877692B3812436F6EA5 /* Pods-AwesomeCarousel-AwesomeCarouselTests.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -485,6 +484,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 47FC352QT7;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = AwesomeCarousel/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -511,6 +511,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 47FC352QT7;
 				INFOPLIST_FILE = AwesomeCarousel/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
