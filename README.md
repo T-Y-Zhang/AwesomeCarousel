@@ -50,3 +50,10 @@ You can find this in `src/screen/carouselScreen.tsx`.
 1. You need to use `AnimatedFlatList`, and pass `{...containerListProp}` as props.
 2. Pass `{...prevButtonProp}`, `{...nextButtonProp}` as prev and next button props. Which has disabled and onPress.
 3. pass `listItemStyle` as style for rowItem.
+
+#How to Run
+1. `yarn`
+2. `npx react-native start`
+3. `npx pod-install`
+4. `npx react-native run-ios` for ios
+5. `npx react-native run-android` for android
