@@ -1,5 +1,7 @@
 # AwesomeCarousel
 
+Allows you to create carousel which is draggable and provide prev and next button.
+
 Show case of using useCarousel hook.
 
 useCarousel hook exports four state which can be used to create carousel.
