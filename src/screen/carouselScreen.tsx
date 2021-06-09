@@ -1,6 +1,5 @@
 import React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
-import FastImage from 'react-native-fast-image';
 
 //hooks
 import useCarousel from './../hook/carousel';
@@ -8,8 +7,9 @@ import {useCarouselData} from './hook';
 
 //components
 import AnimatedFlatList from '../component/animatedFlatList';
+import CarouselCard from '../component/carouselCard';
 
-//types
+//type
 import {CardData} from '../type';
 
 export interface CarouselScreenProps {
@@ -28,16 +28,7 @@ const CarouselScreen: React.FC<CarouselScreenProps> = ({style, ...rest}) => {
       itemCount: carouselData.length,
     });
   const renderItem = ({item}: {item: CardData}) => {
-    return (
-      <FastImage
-        key={item.title}
-        style={listItemStyle}
-        source={{
-          uri: item.images[Math.floor(Math.random() * item.images.length)],
-        }}
-        resizeMode={FastImage.resizeMode.cover}
-      />
-    );
+    return <CarouselCard item={item} style={listItemStyle} />;
   };
   return (
     <View style={{...styles.container, ...style}} {...rest}>
@@ -47,14 +38,12 @@ const CarouselScreen: React.FC<CarouselScreenProps> = ({style, ...rest}) => {
         data={carouselData}
         style={styles.content}
         renderItem={renderItem}
-        keyExtractor={item => {
-          item.title;
-        }}
+        keyExtractor={(item, index) => index}
       />
-      <TouchableOpacity {...prevButtonProp}>
+      <TouchableOpacity style={styles.button} {...prevButtonProp}>
         <Text>Prev</Text>
       </TouchableOpacity>
-      <TouchableOpacity {...nextButtonProp}>
+      <TouchableOpacity style={styles.button} {...nextButtonProp}>
         <Text>Next</Text>
       </TouchableOpacity>
     </View>
@@ -68,6 +57,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     width: '100%',
+  },
+  button: {
+    backgroundColor: 'cyan',
+    borderRadius: 2,
+    width: 100,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: 10,
   },
 });
 
