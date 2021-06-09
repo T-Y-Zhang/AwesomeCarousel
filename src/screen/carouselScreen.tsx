@@ -25,15 +25,17 @@ const CarouselScreen: React.FC<CarouselScreenProps> = ({style, ...rest}) => {
       loop: false,
       pagenation: true,
       aspectRatio: 1,
+      itemCount: carouselData.length,
     });
   const renderItem = ({item}: {item: CardData}) => {
     return (
       <FastImage
-        {...listItemStyle}
+        key={item.title}
+        style={listItemStyle}
         source={{
-          uri: item.images[0],
+          uri: item.images[Math.floor(Math.random() * item.images.length)],
         }}
-        resizeMode={FastImage.resizeMode.contain}
+        resizeMode={FastImage.resizeMode.cover}
       />
     );
   };

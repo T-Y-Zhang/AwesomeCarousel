@@ -3,6 +3,7 @@ export interface IInitCarouselValue {
   loop: boolean;
   pagenation: boolean;
   aspectRatio: number;
+  itemCount: number;
 }
 
 export interface ICarouselControlValue {
