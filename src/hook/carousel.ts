@@ -1,5 +1,5 @@
 import {useCallback, useState} from 'react';
-import {LayoutChangeEvent} from 'react-native';
+import {LayoutChangeEvent, Platform} from 'react-native';
 import {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -8,51 +8,134 @@ import {
   useDerivedValue,
   runOnJS,
   runOnUI,
+  withTiming,
 } from 'react-native-reanimated';
 
 import {IInitCarouselValue, ICarouselControlValue} from './type';
 
-function useProps() {
+function useProps(initValue: IInitCarouselValue) {
+  const timing = useSharedValue(0);
+  const ref = useAnimatedRef<any>();
   const width = useSharedValue(0);
   const endX = useSharedValue(0);
   const directionForward = useSharedValue(true);
+  const onLayout: (event: LayoutChangeEvent) => void = useCallback(
+    (event: LayoutChangeEvent) => {
+      width.value = event.nativeEvent.layout.width;
+    },
+    [width],
+  );
 
   const currentX = useSharedValue(0);
   const currentXVelocity = useSharedValue(0);
-  //this value relies on direction
-  const currentPanelIndex = useDerivedValue(() => {
-    if (directionForward.value) {
-      return currentX.value / width.value;
-    } else {
-      return (endX.value - currentX.value) / width.value;
-    }
-  });
+  const getCurrentPanelIndex = useCallback(
+    (pCurrentX, pWidth, pEndX, pDirectionForward) => {
+      'worklet';
+      if (pDirectionForward) {
+        return pCurrentX / pWidth;
+      } else {
+        return (pEndX - pCurrentX) / pWidth;
+      }
+    },
+    [],
+  );
   const getNextPanel = useCallback(() => {
     'worklet';
     return Math.min(
-      (Math.floor(currentPanelIndex.value) + 1) * width.value,
+      (Math.floor(
+        getCurrentPanelIndex(
+          currentX.value,
+          width.value,
+          endX.value,
+          directionForward.value,
+        ),
+      ) +
+        1) *
+        width.value,
       endX.value,
     );
-  }, [currentPanelIndex, endX, width]);
+  }, [currentX, directionForward, endX, getCurrentPanelIndex, width]);
   const getPrevPanel = useCallback(() => {
     'worklet';
-    return Math.max((Math.floor(currentPanelIndex.value) - 1) * width.value, 0);
-  }, [currentPanelIndex, width]);
+    return Math.max(
+      (Math.ceil(
+        getCurrentPanelIndex(
+          currentX.value,
+          width.value,
+          endX.value,
+          directionForward.value,
+        ),
+      ) -
+        1) *
+        width.value,
+      0,
+    );
+  }, [currentX, directionForward, endX, getCurrentPanelIndex, width]);
   const getClosestPanel = useCallback(() => {
     'worklet';
-    return Math.max(Math.round(currentPanelIndex.value) * width.value, 0);
-  }, [currentPanelIndex, width]);
-  const ref = useAnimatedRef<any>();
+    return Math.min(
+      Math.max(
+        Math.round(
+          getCurrentPanelIndex(
+            currentX.value,
+            width.value,
+            endX.value,
+            directionForward.value,
+          ),
+        ) * width.value,
+        0,
+      ),
+      endX.value,
+    );
+  }, [currentX, directionForward, endX, getCurrentPanelIndex, width.value]);
+
+  const prevPossible = useSharedValue(false);
+  const nextPossible = useSharedValue(false);
+
+  const updateDirection = useCallback(
+    pos => {
+      'worklet';
+      if (pos <= 0) {
+        directionForward.value = true;
+      }
+      if (pos >= endX.value) {
+        directionForward.value = false;
+      }
+    },
+    [directionForward, endX],
+  );
+  const updatePrevNextPossible = useCallback(
+    pos => {
+      'worklet';
+      prevPossible.value = pos > 0;
+      nextPossible.value = pos < endX.value - 0.2;
+    },
+    [endX, nextPossible, prevPossible],
+  );
+  const updateCurrentState = useCallback(
+    (velocity, pos) => {
+      'worklet';
+      if (Platform.OS === 'android') {
+        currentXVelocity.value = -velocity;
+      } else {
+        currentXVelocity.value = velocity;
+      }
+      currentX.value = pos;
+    },
+    [currentX, currentXVelocity],
+  );
+
   const scrollToPos = useCallback(
     (pos: number) => {
       'worklet';
       scrollTo(ref, pos, 0, true);
+      updateCurrentState(0, pos);
+      updateDirection(pos);
+      updatePrevNextPossible(pos);
     },
-    [ref],
+    [ref, updateCurrentState, updateDirection, updatePrevNextPossible],
   );
 
-  const prevPossible = useSharedValue(false);
-  const nextPossible = useSharedValue(false);
   const [prevButtonProp, setPrevButtonProp] = useState({});
   const _setPrevButtonProp = useCallback(
     (pPrevPossible, pEndX, pDirectionForward) => {
@@ -76,7 +159,6 @@ function useProps() {
       directionForward.value,
     );
   }, [_setPrevButtonProp]);
-
   const [nextButtonProp, setNextButtonProp] = useState({});
   const _setNextButtonProp = useCallback(
     (pNextPossible, pEndX, pDirectionForward) => {
@@ -133,66 +215,36 @@ function useProps() {
     getNextPanel,
     getPrevPanel,
   ]);
-  const onLayout: (event: LayoutChangeEvent) => void = useCallback(
-    (event: LayoutChangeEvent) => {
-      width.value = event.nativeEvent.layout.width;
-    },
-    [width],
-  );
-  const onContentSizeChange: (w: number, h: number) => void = useCallback(
-    w => {
-      endX.value = w - width.value;
+  useDerivedValue(() => {
+    if (!endX.value) {
+      endX.value = Math.max(
+        (width.value / initValue.pageSize) * initValue.itemCount - width.value,
+        0,
+      );
       prevPossible.value = false;
       nextPossible.value = endX.value > 0;
-    },
-    [endX, nextPossible, prevPossible, width],
-  );
+    }
+  }, [initValue.itemCount, initValue.pageSize]);
 
-  const updateDirection = useCallback(
-    event => {
-      'worklet';
-      if (event.contentOffset.x <= 0) {
-        directionForward.value = true;
-      }
-      if (event.contentOffset.x >= endX.value) {
-        directionForward.value = false;
-      }
-    },
-    [directionForward, endX],
-  );
-  const updatePrevNextPossible = useCallback(
-    event => {
-      'worklet';
-      prevPossible.value = event.contentOffset.x !== 0;
-      nextPossible.value =
-        event.contentOffset.x !==
-        event.contentSize.width - event.layoutMeasurement.width;
-    },
-    [nextPossible, prevPossible],
-  );
-  const updateCurrentState = useCallback(
-    event => {
-      'worklet';
-      currentXVelocity.value = event.velocity ? event.velocity.x : 0;
-      currentX.value = event.contentOffset.x;
-    },
-    [currentX, currentXVelocity],
-  );
   const onScroll = useAnimatedScrollHandler(
     {
       onEndDrag: event => {
-        updateDirection(event);
-        updateCurrentState(event);
-        updatePrevNextPossible(event);
-        scrollTo(ref, getTarget(), 0, true);
+        updateCurrentState(event.velocity?.x, event.contentOffset.x);
+        updateDirection(event.contentOffset.x);
+        updatePrevNextPossible(event.contentOffset.x);
+        if (event.velocity!.x === 0) {
+          scrollToPos(getTarget());
+        }
       },
       onMomentumBegin: () => {
-        scrollTo(ref, getTarget(), 0, true);
+        timing.value = withTiming(timing.value + 1, {duration: 1}, () => {
+          scrollToPos(getTarget());
+        });
       },
       onMomentumEnd: event => {
-        updateDirection(event);
-        updateCurrentState(event);
-        updatePrevNextPossible(event);
+        updateCurrentState(event.velocity?.x, event.contentOffset.x);
+        updateDirection(event.contentOffset.x);
+        updatePrevNextPossible(event.contentOffset.x);
       },
     },
     [],
@@ -201,7 +253,7 @@ function useProps() {
     width,
     containerListProp: {
       onLayout,
-      onContentSizeChange,
+      decelerationRate: 1,
       onScroll,
       ref,
       horizontal: true,
@@ -214,7 +266,8 @@ function useProps() {
 export default function useCarousel(
   initValue: IInitCarouselValue,
 ): ICarouselControlValue {
-  const {width, containerListProp, nextButtonProp, prevButtonProp} = useProps();
+  const {width, containerListProp, nextButtonProp, prevButtonProp} =
+    useProps(initValue);
 
   const listItemStyle = {
     width: width.value / initValue.pageSize,
